@@ -1,0 +1,10 @@
+node_modules/
+.env
+.env*.local
+temp/
+# Ignore locally downloaded raw novels and translated output by default,
+# so the git repository only tracks the codebase.
+raws/
+translated/
+*.log
+.DS_Store
