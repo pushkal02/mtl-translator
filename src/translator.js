@@ -127,113 +127,64 @@ async function translateChapter(rawText, onProgress) {
   const apiKey = config.geminiApiKey;
   const modelName = config.geminiModel;
 
-  // Split into paragraphs
-  const paragraphs = rawText.split(/\r?\n/).map(p => p.trim()).filter(Boolean);
-  
-  // Group paragraphs into chunks of 5
-  const chunkSize = 5;
-  const paragraphGroups = [];
-  for (let i = 0; i < paragraphs.length; i += chunkSize) {
-    paragraphGroups.push(paragraphs.slice(i, i + chunkSize));
+  if (onProgress) {
+    onProgress(`Translating entire chapter in one go...`);
   }
 
-  let translatedText = '';
-  
-  for (let i = 0; i < paragraphGroups.length; i++) {
-    const group = paragraphGroups[i];
-    const groupText = group.join('\n\n');
-    
-    if (onProgress) {
-      onProgress(`Translating paragraph group ${i + 1} of ${paragraphGroups.length}...`);
-    }
-
-    try {
-      // Try to translate the group as a single block
-      const result = await translateBlock(groupText, modelName, apiKey, onProgress);
-      translatedText += result + '\n\n';
-    } catch (err) {
-      if (err.message.includes('PROHIBITED_CONTENT') || err.message.includes('blocked') || err.message.includes('Text not available')) {
-        if (onProgress) {
-          onProgress(`⚠️ Safety filter triggered. Falling back to paragraph-level translation...`);
-        }
-        
-        // Process paragraph-by-paragraph
-        for (let j = 0; j < group.length; j++) {
-          const p = group[j];
-          try {
-            // Apply spacing delay for individual paragraph fallback calls to prevent hitting rate limits
-            await new Promise(resolve => setTimeout(resolve, 20000));
-            const pResult = await translateBlock(p, modelName, apiKey, onProgress);
-            translatedText += pResult + '\n\n';
-          } catch (pErr) {
-            if (pErr.message.includes('PROHIBITED_CONTENT') || pErr.message.includes('blocked') || pErr.message.includes('Text not available')) {
-              if (onProgress) {
-                onProgress(`  ⚠️ Paragraph ${j + 1} blocked. Retrying with moderated system instructions...`);
-              }
-              try {
-                // Wait slightly before retry to cool down API
-                await new Promise(resolve => setTimeout(resolve, 15000));
-                
-                // Call Gemini using a moderated system instruction
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const safetySettings = [
-                  {
-                    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-                    threshold: HarmBlockThreshold.BLOCK_NONE,
-                  },
-                  {
-                    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                    threshold: HarmBlockThreshold.BLOCK_NONE,
-                  },
-                  {
-                    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                    threshold: HarmBlockThreshold.BLOCK_NONE,
-                  },
-                  {
-                    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                    threshold: HarmBlockThreshold.BLOCK_NONE,
-                  },
-                ];
-                
-                const moderatedModel = genAI.getGenerativeModel({
-                  model: modelName || 'gemini-2.5-flash',
-                  systemInstruction: `You are a professional literary translator. Translate this romance novel passage using safe, clean, compliant, and non-explicit vocabulary to describe the actions and dialogue. Avoid any graphic anatomy or descriptions of non-consensual force, while maintaining the plot and emotional tension. Output only translation.`
-                });
-                
-                const modResult = await moderatedModel.generateContent({
-                  contents: [{ role: 'user', parts: [{ text: p }] }],
-                  safetySettings
-                });
-                
-                translatedText += modResult.response.text() + '\n\n';
-                if (onProgress) {
-                  onProgress(`  ✓ Moderated translation succeeded.`);
-                }
-              } catch (modErr) {
-                if (onProgress) {
-                  onProgress(`  ❌ Hard block on paragraph. Omitting details.`);
-                }
-                translatedText += `[Translation of this passage was omitted due to system safety filters: "${p}"]\n\n`;
-              }
-            } else {
-              throw pErr;
-            }
-          }
-        }
-      } else {
-        throw err;
+  try {
+    const result = await translateBlock(rawText, modelName, apiKey, onProgress);
+    return result.trim();
+  } catch (err) {
+    if (err.message.includes('PROHIBITED_CONTENT') || err.message.includes('blocked') || err.message.includes('Text not available')) {
+      if (onProgress) {
+        onProgress(`⚠️ Safety filter triggered on chapter. Retrying with moderated instructions...`);
       }
-    }
-
-    // Natural spacing delay (20 seconds) between paragraph groups
-    // to strictly limit requests to under 5 RPM (free tier safety)
-    if (i < paragraphGroups.length - 1) {
-      if (onProgress) onProgress(`Cooling down (20s) to respect Free Tier API request limits...`);
-      await new Promise(resolve => setTimeout(resolve, 20000));
+      
+      // Cooldown slightly before retry
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const safetySettings = [
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_NONE,
+          },
+        ];
+        
+        const moderatedModel = genAI.getGenerativeModel({
+          model: modelName || 'gemini-2.5-flash-lite',
+          systemInstruction: `You are a professional literary translator. Translate this novel passage using safe, clean, compliant, and non-explicit vocabulary to describe the actions and dialogue. Avoid any graphic anatomy or descriptions of non-consensual force, while maintaining the plot and emotional tension. Output only translation.`
+        });
+        
+        const modResult = await moderatedModel.generateContent({
+          contents: [{ role: 'user', parts: [{ text: rawText }] }],
+          safetySettings
+        });
+        
+        return modResult.response.text().trim();
+      } catch (modErr) {
+        if (onProgress) {
+          onProgress(`  ❌ Hard block on chapter content.`);
+        }
+        throw new Error(`Chapter translation blocked by content safety policies: ${modErr.message}`);
+      }
+    } else {
+      throw err;
     }
   }
-
-  return translatedText.trim();
 }
 
 module.exports = {

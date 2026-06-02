@@ -83,7 +83,7 @@ async function scrapeAndTranslateCLK() {
       console.log(`Title: "${titleText}"`);
 
       // 3. Translate using Gemini API
-      console.log(`Translating via Gemini API (Uncensored mode)...`);
+      console.log(`Translating via Gemini API (High-Fidelity mode)...`);
       const translatedText = await translateChapter(rawText, (progressMsg) => {
         console.log(`  └ ${progressMsg}`);
       });
@@ -161,6 +161,9 @@ async function scrapeAndTranslateCLK() {
         } else {
           currentUrl = nextLink;
         }
+
+        console.log('Cooling down (20s) before starting next chapter to respect API request limits...');
+        await new Promise(resolve => setTimeout(resolve, 20000));
       }
 
     } catch (err) {
