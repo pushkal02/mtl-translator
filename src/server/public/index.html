@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expressive MTL Translator - Dashboard</title>
+  <!-- Google Fonts: Outfit for UI, Lora for readable prose -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <i class="fa-solid fa-wand-magic-sparkles logo-icon"></i>
+        <h1>Expressive MTL Translator</h1>
+        <span class="badge beta">V1.0</span>
+      </div>
+      <div class="status-summary" id="overall-status">
+        <span class="status-indicator idle"></span>
+        <span class="status-text">System Idle</span>
+      </div>
+    </header>
+
+    <!-- Main Grid Layout -->
+    <div class="dashboard-grid">
+      
+      <!-- LEFT SECTION: Novel Explorer & Controls -->
+      <section class="left-panel">
+        
+        <!-- Section: Configurations -->
+        <div class="glass-card config-card">
+          <div class="card-header" onclick="toggleCardBody(this)">
+            <h2><i class="fa-solid fa-sliders"></i> Configuration</h2>
+            <i class="fa-solid fa-chevron-down toggle-icon"></i>
+          </div>
+          <div class="card-body">
+            <form id="config-form">
+              <div class="form-group">
+                <label for="gemini-key">Gemini API Key</label>
+                <div class="input-with-icon">
+                  <i class="fa-solid fa-key"></i>
+                  <input type="password" id="gemini-key" placeholder="Enter GEMINI_API_KEY..." />
+                </div>
+              </div>
+              
+              <div class="form-group row">
+                <div class="col">
+                  <label for="gemini-model">Gemini Model</label>
+                  <select id="gemini-model">
+                    <option value="gemini-2.5-flash" selected>gemini-2.5-flash (Fast & Cost-Efficient)</option>
+                    <option value="gemini-2.5-pro">gemini-2.5-pro (High Quality Literature)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="source-path">Source Folder / Git URL</label>
+                <div class="input-with-action">
+                  <input type="text" id="source-path" placeholder="e.g. ./raws, or git@github.com:.../novels.git" />
+                  <button type="button" class="btn btn-secondary" id="btn-update-source" title="Update Source Directory">
+                    <i class="fa-solid fa-rotate"></i> Sync
+                  </button>
+                </div>
+                <small class="helper-text">Accepts local directories or Git repository links.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="target-path">Target Folder (Output)</label>
+                <input type="text" id="target-path" placeholder="e.g. ./translated" />
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-save-config">
+                <i class="fa-solid fa-floppy-disk"></i> Save Settings
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Section: Web Scraper -->
+        <div class="glass-card scraper-card collapsed">
+          <div class="card-header" onclick="toggleCardBody(this)">
+            <h2><i class="fa-solid fa-spider"></i> Web Scraper</h2>
+            <i class="fa-solid fa-chevron-down toggle-icon"></i>
+          </div>
+          <div class="card-body">
+            <form id="scraper-form">
+              <div class="form-group">
+                <label for="scrape-url">Novel Index URL</label>
+                <div class="input-with-action">
+                  <input type="text" id="scrape-url" placeholder="e.g. https://www.royalroad.com/novel/..." />
+                  <button type="button" class="btn btn-secondary" id="btn-fetch-index" title="Scan Website Index">
+                    <i class="fa-solid fa-binoculars"></i> Scan
+                  </button>
+                </div>
+                <small class="helper-text">Enter a web novel main page URL to automatically discover selectors and fetch its chapter list.</small>
+              </div>
+
+              <!-- Scraping Range Panel -->
+              <div class="scrape-range-panel hidden" id="scrape-range-panel">
+                <div class="novel-title-display" id="scraped-novel-title"></div>
+                <div class="form-group row">
+                  <div class="col">
+                    <label for="scrape-start">Start Chapter #</label>
+                    <input type="number" id="scrape-start" min="1" value="1" />
+                  </div>
+                  <div class="col">
+                    <label for="scrape-end">End Chapter #</label>
+                    <input type="number" id="scrape-end" min="1" value="1" />
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" id="btn-start-scrape-translate" style="width: 100%; margin-top: 10px;">
+                  <i class="fa-solid fa-cloud-arrow-down"></i> Scrape & Translate Range
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Section: Novel Selector & Chapter List -->
+        <div class="glass-card explorer-card">
+          <div class="card-header">
+            <h2><i class="fa-solid fa-book"></i> Novels Library</h2>
+            <button class="btn btn-icon" id="btn-refresh-library" title="Rescan Library">
+              <i class="fa-solid fa-arrow-rotate-right"></i>
+            </button>
+          </div>
+          <div class="card-body explorer-body">
+            
+            <!-- Novel List Dropdown/Selector -->
+            <div class="form-group">
+              <label for="novel-selector">Select Novel</label>
+              <select id="novel-selector">
+                <option value="" disabled selected>Select a novel to translate/read...</option>
+              </select>
+            </div>
+
+            <!-- Novel Summary Stats -->
+            <div class="novel-stats-bar hidden" id="novel-stats">
+              <div class="stat-item">
+                <span class="stat-num" id="stat-total">0</span>
+                <span class="stat-label">Chapters</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num" id="stat-translated">0</span>
+                <span class="stat-label">Translated</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-num" id="stat-pending">0</span>
+                <span class="stat-label">Pending</span>
+              </div>
+            </div>
+
+            <!-- Action Controls for Active Translation -->
+            <div class="translation-actions hidden" id="trans-actions-panel">
+              <div class="progress-container hidden" id="global-progress-bar">
+                <div class="progress-header">
+                  <span class="progress-title" id="progress-chapter-name">Translating...</span>
+                  <span class="progress-percent" id="progress-percentage">0%</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" id="progress-fill"></div>
+                </div>
+              </div>
+
+              <div class="btn-group">
+                <button class="btn btn-primary" id="btn-translate-pending">
+                  <i class="fa-solid fa-play"></i> Translate Pending
+                </button>
+                <button class="btn btn-secondary" id="btn-translate-all">
+                  <i class="fa-solid fa-forward-fast"></i> Force All
+                </button>
+                <button class="btn btn-danger hidden" id="btn-stop-translation">
+                  <i class="fa-solid fa-stop"></i> Stop
+                </button>
+              </div>
+            </div>
+
+            <!-- Chapter Checklist -->
+            <div class="chapters-container">
+              <div class="chapters-header">
+                <h3>Chapters</h3>
+                <div class="chapters-bulk-actions">
+                  <span id="select-all-chapters" title="Select All">All</span> | 
+                  <span id="select-none-chapters" title="Clear Selection">None</span>
+                </div>
+              </div>
+              <div class="chapters-list-wrapper">
+                <ul class="chapters-list" id="chapters-list">
+                  <li class="empty-list-msg">No novel selected. Please select a novel from the dropdown.</li>
+                </ul>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- RIGHT SECTION: Workspace (Console / Split Reader / MD Reader) -->
+      <main class="right-panel glass-card workspace-card">
+        <!-- Tabs Header -->
+        <div class="workspace-tabs">
+          <button class="tab-btn active" data-tab="tab-console">
+            <i class="fa-solid fa-terminal"></i> Console Logs
+          </button>
+          <button class="tab-btn" data-tab="tab-split-reader" id="btn-tab-split">
+            <i class="fa-solid fa-columns"></i> Split Reader
+          </button>
+          <button class="tab-btn" data-tab="tab-markdown-reader" id="btn-tab-md">
+            <i class="fa-solid fa-file-invoice"></i> Clean View
+          </button>
+        </div>
+
+        <!-- Tab Body Container -->
+        <div class="workspace-content">
+          
+          <!-- Tab 1: Console Logs -->
+          <div class="tab-pane active" id="tab-console">
+            <div class="console-wrapper">
+              <div class="console-header">
+                <span><i class="fa-solid fa-code"></i> Live Output logs</span>
+                <button class="btn btn-icon" id="btn-clear-console" title="Clear Console Log">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+              <div class="console-terminal" id="console-terminal">
+                <div class="console-line system">[System] Ready to start translation. Select a novel and click "Translate Pending".</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Split Reader -->
+          <div class="tab-pane" id="tab-split-reader">
+            <div class="split-reader-container">
+              <div class="split-pane pane-raw">
+                <div class="pane-header">
+                  <span>Raw Machine Translation (MTL)</span>
+                  <span class="file-ext-badge" id="raw-file-ext">TXT</span>
+                </div>
+                <div class="pane-content prose-text" id="raw-reader-body">
+                  Select a chapter and click the "Read" action to load content side-by-side.
+                </div>
+              </div>
+              <div class="split-pane pane-translated">
+                <div class="pane-header">
+                  <span>English Translation (Markdown Preview)</span>
+                  <span class="status-pill completed hidden" id="translated-status-pill">Translated</span>
+                </div>
+                <div class="pane-content prose-text" id="translated-reader-body">
+                  No translation loaded. Run translation or select a translated chapter.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Markdown Reader -->
+          <div class="tab-pane" id="tab-markdown-reader">
+            <div class="markdown-reader-container">
+              <div class="reader-header">
+                <h1 id="md-reader-title">No Chapter Selected</h1>
+                <div class="reader-meta">
+                  <span id="md-reader-subtitle">Please select a translated chapter to begin reading</span>
+                </div>
+              </div>
+              <hr class="reader-divider" />
+              <div class="reader-body prose-text lora-font" id="md-reader-body">
+                <p class="reader-placeholder">Select a chapter from the list and load it in the split view or double-click to read. Translating will output standard Markdown, rendered here in clean print typography.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </main>
+
+    </div>
+  </div>
+</body>
+</html>
