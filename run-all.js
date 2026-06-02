@@ -9,7 +9,7 @@ function runTranslationQueue() {
     // Batch 1: Chapters 326 to 340
     console.log('\n--- Batch 1: Translating Chapters 326 to 340 ---');
     try {
-      execSync('node scrape-clk.js 326 340', { stdio: 'inherit' });
+      execSync('node scrape-clk.js 327 340', { stdio: 'inherit' });
     } catch (batch1Err) {
       console.error('❌ Batch 1 failed, but continuing to Batch 2:', batch1Err.message);
     }

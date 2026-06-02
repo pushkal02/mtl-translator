@@ -96,6 +96,44 @@ async function scrapeAndTranslateCLK() {
       fs.writeFileSync(outputFilePath, mdContent, 'utf8');
       console.log(`✓ Saved translation to: ${outputFilePath}`);
 
+      // Git commit and push inside the novel target folder
+      try {
+        const { execSync } = require('child_process');
+        if (!fs.existsSync(path.join(targetDir, '.git'))) {
+          console.log(`Initializing local Git repository for "${novelName}"...`);
+          execSync('git init && git branch -M main', { cwd: targetDir });
+        }
+        
+        console.log('Staging and committing chapter to local repository...');
+        execSync('git add .', { cwd: targetDir });
+        try {
+          execSync(`git commit -m "Add Chapter ${chNum}: ${sanitizedTitle}"`, { cwd: targetDir, stdio: 'ignore' });
+          console.log(`✓ Committed Chapter ${chNum} locally.`);
+          
+          let hasRemote = false;
+          try {
+            const remotes = execSync('git remote', { cwd: targetDir }).toString().trim();
+            if (remotes.includes('origin')) {
+              hasRemote = true;
+            }
+          } catch (remoteErr) {
+            // No remote configured
+          }
+
+          if (hasRemote) {
+            console.log('Pushing updates to remote repository...');
+            execSync('git push origin main', { cwd: targetDir });
+            console.log('✓ Successfully pushed to remote private repository.');
+          } else {
+            console.log('ℹ No remote "origin" set. Skipping remote push. Run "git remote add origin <URL>" in the translated novel folder to enable auto-push.');
+          }
+        } catch (commitErr) {
+          console.log('ℹ No changes to commit or commit failed.');
+        }
+      } catch (gitErr) {
+        console.warn(`⚠️ Git operation failed: ${gitErr.message}`);
+      }
+
       // 5. Get Next Link URL
       let nextLink = $('a.chnav.next').attr('href');
       
