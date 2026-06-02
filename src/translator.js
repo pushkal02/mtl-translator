@@ -39,20 +39,46 @@ function chunkText(text, maxChunkSize = 8000) {
   return chunks;
 }
 
+const BACKUP_MODELS = [
+  'gemini-2.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-3-flash-preview',
+  'gemini-2.5-flash',
+  'gemini-flash-latest'
+];
+
+let activeModelIndex = 0;
+let activeModelName = null;
+
+function getNextModel(failedModel) {
+  if (!activeModelName || activeModelName === failedModel) {
+    const currentIndex = BACKUP_MODELS.indexOf(failedModel);
+    activeModelIndex = (currentIndex + 1) % BACKUP_MODELS.length;
+    activeModelName = BACKUP_MODELS[activeModelIndex];
+  }
+  return activeModelName;
+}
+
 /**
- * Translates a single text block using the Gemini API, with automatic retry for 429 Rate Limits.
+ * Translates a single text block using the Gemini API, with automatic retry for 429 Rate Limits and self-healing model rotation.
  */
 async function translateBlock(text, modelName, apiKey, onProgress, attempt = 1) {
   if (!apiKey) {
     throw new Error('Gemini API Key is missing. Please configure it in your settings.');
   }
 
+  if (!activeModelName) {
+    activeModelName = modelName || 'gemini-2.5-flash-lite';
+  }
+
+  const modelToUse = activeModelName;
+
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     
     // Set up model with system instructions
     const model = genAI.getGenerativeModel({
-      model: modelName || 'gemini-2.5-flash',
+      model: modelToUse,
       systemInstruction: SYSTEM_INSTRUCTION
     });
 
@@ -83,7 +109,9 @@ async function translateBlock(text, modelName, apiKey, onProgress, attempt = 1) 
       topK: 40,
     };
 
-    if (onProgress && attempt === 1) onProgress('Sending request to Gemini API...');
+    if (onProgress && attempt === 1) {
+      onProgress(`Sending request to Gemini API (Model: ${modelToUse})...`);
+    }
     
     const result = await model.generateContent({
       contents: [{ role: 'user', parts: [{ text: text }] }],
@@ -100,12 +128,23 @@ async function translateBlock(text, modelName, apiKey, onProgress, attempt = 1) 
                         err.message.includes('Too Many Requests');
 
     if (isRateLimit) {
-      if (attempt >= 5) {
-        throw new Error('Exceeded maximum rate limit retries (429) after 5 attempts.');
+      // If we hit 429 twice in a row, rotate the model and retry
+      if (attempt >= 2) {
+        const nextModel = getNextModel(modelToUse);
+        const rotationMsg = `🔄 Daily quota likely exhausted for model "${modelToUse}". Rotating to backup model "${nextModel}"...`;
+        if (onProgress) {
+          onProgress(rotationMsg);
+        } else {
+          console.log(rotationMsg);
+        }
+        
+        // Brief pause to clear connections, then retry with the new model
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return translateBlock(text, modelName, apiKey, onProgress, 1);
       }
 
-      const waitSec = 90;
-      const progressMsg = `⚠️ Rate limit hit (429). Cool down for ${waitSec}s before retry (Attempt ${attempt}/5)...`;
+      const waitSec = 60;
+      const progressMsg = `⚠️ Rate limit hit (429) for "${modelToUse}". Cooling down for ${waitSec}s before retry (Attempt ${attempt}/2)...`;
       if (onProgress) {
         onProgress(progressMsg);
       } else {
