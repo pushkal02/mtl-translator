@@ -100,16 +100,16 @@ async function translateBlock(text, modelName, apiKey, onProgress, attempt = 1) 
                         err.message.includes('Too Many Requests');
 
     if (isRateLimit) {
-      const waitSec = 65;
-      const progressMsg = `⚠️ Rate limit hit (429). Cool down for ${waitSec}s before retry (Attempt ${attempt}/3)...`;
+      if (attempt >= 5) {
+        throw new Error('Exceeded maximum rate limit retries (429) after 5 attempts.');
+      }
+
+      const waitSec = 90;
+      const progressMsg = `⚠️ Rate limit hit (429). Cool down for ${waitSec}s before retry (Attempt ${attempt}/5)...`;
       if (onProgress) {
         onProgress(progressMsg);
       } else {
         console.log(progressMsg);
-      }
-      
-      if (attempt >= 3) {
-        throw new Error('Exceeded maximum rate limit retries (429). Please slow down requests.');
       }
 
       await new Promise(resolve => setTimeout(resolve, waitSec * 1000));
@@ -162,7 +162,7 @@ async function translateChapter(rawText, onProgress) {
           const p = group[j];
           try {
             // Apply spacing delay for individual paragraph fallback calls to prevent hitting rate limits
-            await new Promise(resolve => setTimeout(resolve, 15000));
+            await new Promise(resolve => setTimeout(resolve, 20000));
             const pResult = await translateBlock(p, modelName, apiKey, onProgress);
             translatedText += pResult + '\n\n';
           } catch (pErr) {
@@ -172,7 +172,7 @@ async function translateChapter(rawText, onProgress) {
               }
               try {
                 // Wait slightly before retry to cool down API
-                await new Promise(resolve => setTimeout(resolve, 10000));
+                await new Promise(resolve => setTimeout(resolve, 15000));
                 
                 // Call Gemini using a moderated system instruction
                 const genAI = new GoogleGenerativeAI(apiKey);
@@ -225,11 +225,11 @@ async function translateChapter(rawText, onProgress) {
       }
     }
 
-    // Natural spacing delay (15 seconds) between paragraph groups
+    // Natural spacing delay (20 seconds) between paragraph groups
     // to strictly limit requests to under 5 RPM (free tier safety)
     if (i < paragraphGroups.length - 1) {
-      if (onProgress) onProgress(`Cooling down (15s) to respect Free Tier API request limits...`);
-      await new Promise(resolve => setTimeout(resolve, 15000));
+      if (onProgress) onProgress(`Cooling down (20s) to respect Free Tier API request limits...`);
+      await new Promise(resolve => setTimeout(resolve, 20000));
     }
   }
 
