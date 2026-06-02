@@ -204,7 +204,7 @@ async function translateChapter(rawText, onProgress) {
         ];
         
         const moderatedModel = genAI.getGenerativeModel({
-          model: modelName || 'gemini-2.5-flash-lite',
+          model: activeModelName || modelName || 'gemini-2.5-flash-lite',
           systemInstruction: `You are a professional literary translator. Translate this novel passage using safe, clean, compliant, and non-explicit vocabulary to describe the actions and dialogue. Avoid any graphic anatomy or descriptions of non-consensual force, while maintaining the plot and emotional tension. Output only translation.`
         });
         
