@@ -1,12 +1,12 @@
 # 🔮 Expressive MTL Translator
 
-An AI-assisted, highly expressive, and **completely uncensored** translator for machine-translated (MTL) novels. It features a premium, glassmorphic dark-themed local web dashboard to manage, crawl, translate, and read web novels side-by-side.
+An AI-assisted, highly expressive, and high-fidelity translator for machine-translated (MTL) novels. It features a premium, glassmorphic dark-themed local web dashboard to manage, crawl, translate, and read web novels side-by-side.
 
 ---
 
 ## 🌟 Key Features
 
-*   **Uncensored Translation**: Configures the Gemini API safety parameters to `BLOCK_NONE` and utilizes a dedicated literature-translation prompt. Translates mature themes, explicit descriptions, profanity, and violence verbatim with full fidelity.
+*   **High-Fidelity Translation**: Configures safety parameters to prevent unnecessary filtering of literature content and utilizes a dedicated prose-translation prompt to maintain original author intent, dialogue, and scene descriptions with full fidelity.
 *   **AI-Assisted Web Scraper**: Exploring a new novel page will automatically trigger Gemini to analyze the site's HTML, discover CSS selectors for chapter lists, content wrappers, and titles, and remember them in `scrapers.json`.
 *   **Incremental Updates**: Keeps track of translated chapters. When running the translator again, it only translates newly added/released chapters, saving time and API tokens.
 *   **Git Repository Integration**: Directly clones or pulls raw novel sources from GitHub/GitLab links.
@@ -113,9 +113,9 @@ Your settings are persisted in `config.json` at the root of the project. You can
 
 ---
 
-## 🔒 Safety & Uncensored Translations
+## 🔒 Safety & High-Fidelity Settings
 
-To support authentic translation of published literature that might contain adult themes, violence, or profanity, requests sent to Gemini explicitly disable content blocks:
+To support authentic translation of complex literary works and avoid false filtering of text containing dialogue or conflicts, the application disables safety filters:
 
 ```javascript
 const safetySettings = [
@@ -130,4 +130,4 @@ const safetySettings = [
   // ...other categories set to BLOCK_NONE
 ];
 ```
-Additionally, the system instructions explicitly direct the LLM to translate with high literary quality, maintain character voices, and avoid sanitizing or self-censoring raw source content.
+Additionally, the system instruction directs the LLM to prioritize accuracy and translation completeness to preserve the original prose, character speech, and style.

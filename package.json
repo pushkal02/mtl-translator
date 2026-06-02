@@ -1,7 +1,7 @@
 {
   "name": "expressive-mtl-translator",
   "version": "1.0.0",
-  "description": "An expressive, uncensored translator for machine-translated novels using Gemini API with a local web dashboard.",
+  "description": "An expressive, high-fidelity translator for machine-translated novels using Gemini API with a local web dashboard.",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
@@ -11,8 +11,7 @@
     "translator",
     "mtl",
     "gemini",
-    "novel",
-    "uncensored"
+    "novel"
   ],
   "author": "Antigravity",
   "license": "MIT",
